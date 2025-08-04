@@ -1,6 +1,7 @@
 import express from "express";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { Resend } from "resend";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -10,6 +11,8 @@ const port = process.env.PORT || 3000;
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2023-10-16",
 });
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.use(express.raw({ type: "application/json" }));
 
@@ -31,6 +34,7 @@ app.post("/stripe", async (req, res) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
     const email = session.customer_details?.email;
+    const name = session.customer_details?.name;
 
     if (!email) return res.status(400).send("Missing email");
 
@@ -53,6 +57,25 @@ app.post("/stripe", async (req, res) => {
     }
 
     console.log(`✅ Updated ${email} to donated`);
+
+    // Send confirmation email
+    try {
+      await resend.emails.send({
+        from: "donations@mytournamentapp.com",
+        to: email,
+        subject: "Thank you for your donation 🙏",
+        html: `
+          <h1>Grazie, ${name || ""}!</h1>
+          <p>We truly appreciate your support of the Tournament App.</p>
+          <p>Your donation helps us keep improving the experience for everyone.</p>
+          <p>— The MyTournamentApp Team</p>
+        `,
+      });
+      console.log(`📧 Confirmation email sent to ${email}`);
+    } catch (emailError) {
+      console.error("❌ Failed to send confirmation email:", emailError);
+    }
+
     return res.status(200).send("Success");
   }
 
