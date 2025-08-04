@@ -61,7 +61,7 @@ app.post("/stripe", async (req, res) => {
     // Send confirmation email
     try {
       await resend.emails.send({
-        from: "donations@mytournamentapp.com",
+        from: "donations@mycellarapp.com",
         to: email,
         subject: "Thank you for your donation 🙏",
         html: `
